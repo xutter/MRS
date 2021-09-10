@@ -1,77 +1,121 @@
-#include "vehicles/multirotor/MultiRotorParamsFactory.hpp"
-#include "physics/PhysicsWorld.hpp"
-#include "physics/FastPhysicsEngine.hpp"
-#include "vehicles/multirotor/api/MultirotorApiBase.hpp"
-#include "common/SteppableClock.hpp"
-#include "vehicles/multirotor/MultiRotorPhysicsBody.hpp"
 #pragma comment(lib,"AirLib.lib")
 #pragma comment(lib,"MavLinkCom.lib")
-void main()
+#pragma comment(lib,"rpc.lib")
+
+#include "multirotor.h"
+#include <winsock.h>
+
+const double RadToDeg = 180.0 / 3.1415926;
+
+struct SendToServer
 {
+    int id{ 0 };
+    float data[18]{ 0 };
+};
+
+void PrintInfo(msr::airlib::Kinematics::State &kine, int id, bool allInfo = true)
+{
+    if (allInfo)
+    {
+        printf("%4d%16.2f%16.2f%16.2f%16.2f%16.2f%16.2f\n"
+            , id
+            , kine.pose.position.x(), kine.pose.position.y(), kine.pose.position.z()
+            , kine.twist.linear.x(), kine.twist.linear.y(), kine.twist.linear.z()
+            , kine.accelerations.linear.x(), kine.accelerations.linear.y(), kine.accelerations.linear.z()
+            , kine.pose.orientation.x() * RadToDeg, kine.pose.orientation.y() * RadToDeg, kine.pose.orientation.z() * RadToDeg
+            , kine.twist.angular.x() * RadToDeg, kine.twist.angular.y() * RadToDeg, kine.twist.angular.z() * RadToDeg
+            , kine.accelerations.angular.x() * RadToDeg, kine.accelerations.angular.y() * RadToDeg, kine.accelerations.angular.z() * RadToDeg
+        );
+    }
+    else
+    {
+        printf("%4d%16.2f%16.2f%16.2f%16.2f%16.2f%16.2f\n"
+            , id
+            , kine.pose.position.x(), kine.pose.position.y(), kine.pose.position.z()
+            , kine.twist.linear.x(), kine.twist.linear.y(), kine.twist.linear.z()
+        );
+    }
+}
+void main(int argc, char *argv[])
+{
+    int num = 3;
+    if (argc > 1)
+    {
+        num = atoi(argv[1]);
+    }
+    __int64 so = socket(AF_INET,SOCK_DGRAM,IPPROTO_UDP);
+
+    sockaddr_in haddr{ 0 };
+    haddr.sin_family = AF_INET;
+    haddr.sin_port = htons(22887);
+    haddr.sin_addr.S_un.S_addr = inet_addr("0.0.0.0");
+    bind(so,(sockaddr *)&haddr,sizeof(sockaddr_in));
+
+    sockaddr_in raddr{ 0 };
+    raddr.sin_family = AF_INET;
+    raddr.sin_port = htons(58008);
+    raddr.sin_addr.S_un.S_addr = inet_addr("127.0.0.1");
+
+    // 仿真计算周期 3ms
     auto clock = std::make_shared<SteppableClock>(3E-3f);
     ClockFactory::get(clock);
 
-    //Settings& settings = Settings::loadJSonFile("settings.json");
-    //unused(settings);
+    // 创建默认的参数
+    AirSimSettings::singleton().load([] {return "Multirotor"; });
 
-    SensorFactory sensor_factory;
-    //Eigen::Vector3d, Eigen::Quaternion<double, Eigen::DontAlign>
-    Eigen::Vector3f init_position = Eigen::Vector3f::Zero();
-    Eigen::Quaternion<float, Eigen::DontAlign> init_roration{ 0,0,0,0};
-    Pose init_pose{ init_position,init_roration };
-    AirSimSettings::singleton().addVehicleSetting("SimpleFlight", "simpleflight", init_pose);
-    std::unique_ptr<MultiRotorParams> params = MultiRotorParamsFactory::createConfig(
-        AirSimSettings::singleton().getVehicleSetting("simpleflight"),
-        std::make_shared<SensorFactory>());
-    auto api = params->createMultirotorApi();
+    // 创建飞机
+    std::vector<UpdatableObject*> vehicles;
+    std::vector<Multirotor*> multirotors;
+    for (int i = 0; i < num; i++)
+    {
+        char name[64]{ 0 };
+        _snprintf(name, sizeof(name),"Multirotor%02d", i);
+        Multirotor* sp = new Multirotor(name);
+        sp->spawn();
+        multirotors.push_back(sp);
+        vehicles.push_back(sp->getBody().get());
+    }
 
-    std::unique_ptr<msr::airlib::Kinematics> kinematics;
-    std::unique_ptr<msr::airlib::Environment> environment;
-    Kinematics::State initial_kinematic_state = Kinematics::State::zero();
+    // 创建物理引擎，启动物理引擎
+    for (int i = 0; i < num; i++)
+    {
+        multirotors[i]->start();
+    }
 
-    initial_kinematic_state.pose = init_pose;
-    kinematics.reset(new Kinematics(initial_kinematic_state));
-    kinematics->reset();
-
-    Environment::State initial_environment;
-    initial_environment.position = init_position;// initial_kinematic_state.pose.position;
-    initial_environment.geo_point = GeoPoint();
-    environment.reset(new Environment(initial_environment));
-
-    MultiRotorPhysicsBody vehicle(params.get(), api.get(), kinematics.get(), environment.get());
-
-    std::vector<UpdatableObject*> vehicles = { &vehicle };
     std::unique_ptr<PhysicsEngineBase> physics_engine(new FastPhysicsEngine());
     PhysicsWorld physics_world(std::move(physics_engine), vehicles, static_cast<uint64_t>(clock->getStepSize() * 1E9));
-    //physics_world.reset();
+    //clock->sleep_for(2);
 
+    //创建并启动rpc
+    ApiProvider api_provider(nullptr);
+    for (auto it : multirotors)
+    {
+        api_provider.insert_or_assign(it->name(),it->getApi().get(),nullptr);
+    }
+    msr::airlib::MultirotorRpcLibServer server(&api_provider, "0.0.0.0");
+    //start server in async mode
+    server.start(false, 2);
 
-    //clock->sleep_for(0.04f);
-
-    //Utils::getSetMinLogLevel(true, 100);
-
-    api->setSimulatedGroundTruth(&initial_kinematic_state,environment.get());
-    api->reset();
-    api->enableApiControl(true);
-    api->armDisarm(true);
-    api->setSimulatedGroundTruth(&initial_kinematic_state, environment.get());
-    api->takeoff(10);
-
-    //clock->sleep_for(2.0f);
-
-    //Utils::getSetMinLogLevel(true);
-
-    api->moveToPosition(-5, -5, -5, 5, 5, DrivetrainType::MaxDegreeOfFreedom, YawMode(true, 0), -1, 0);
-
-    //clock->sleep_for(2.0f);
-
-    std::vector<std::string> messages_;
+    int i = 0;
     while (true) {
-        clock->sleep_for(0.1f);
-        api->getStatusMessages(messages_);
-        for (const auto& status_message : messages_) {
-            std::cout << status_message << std::endl;
+        clock->sleep_for(0.1); 
+        int i = 1;
+        for (auto it : multirotors)
+        {
+            auto kine = it->getBody()->getKinematics();
+            SendToServer _data{ i,
+                { kine.pose.position.x(), kine.pose.position.y(), kine.pose.position.z()
+                , kine.twist.linear.x(), kine.twist.linear.y(), kine.twist.linear.z()
+                , kine.accelerations.linear.x(), kine.accelerations.linear.y(), kine.accelerations.linear.z()
+                , kine.pose.orientation.x() * RadToDeg, kine.pose.orientation.y() * RadToDeg, kine.pose.orientation.z() * RadToDeg
+                , kine.twist.angular.x() * RadToDeg, kine.twist.angular.y() * RadToDeg, kine.twist.angular.z() * RadToDeg
+                , kine.accelerations.angular.x() * RadToDeg, kine.accelerations.angular.y() * RadToDeg, kine.accelerations.angular.z() * RadToDeg }
+            };
+
+            sendto(so,(const char *)&_data,sizeof(_data),0,(sockaddr *)&raddr,sizeof(raddr));
+            PrintInfo(kine,i,false);
+            i += 1;
         }
-        messages_.clear();
+
     }
 }

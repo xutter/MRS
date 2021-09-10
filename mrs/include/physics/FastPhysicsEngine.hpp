@@ -83,6 +83,7 @@ namespace airlib
             body.lock();
             //get current kinematics state of the body - this state existed since last dt seconds
             const Kinematics::State& current = body.getKinematics();
+
             Kinematics::State next;
             Wrench next_wrench;
 

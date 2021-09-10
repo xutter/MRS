@@ -94,6 +94,7 @@ public:
         pid_->setMeasured(measured_velocity_local[axis_]);
         pid_->update();
 
+
         //use this to drive child controller
         switch (axis_) {
         case 0: //+vy is +ve roll
@@ -118,6 +119,9 @@ public:
             break;
         default:
             throw std::invalid_argument("axis must be 0, 1 or 3 for VelocityController");
+        }
+        if (goal_velocity_local[axis_] != 0) {
+            std::cout << axis_ << "  :  " << goal_velocity_local[axis_] << "    " << output_ << std::endl;
         }
     }
 

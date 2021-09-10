@@ -78,13 +78,13 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>.\include;.\deps\eigen3;.\deps\MavLinkCom\include;$(IncludePath)</IncludePath>
-    <LibraryPath>.\deps\AirLib\lib\x64\Debug;.\deps\MavLinkCom\lib\x64\Debug;$(LibraryPath)</LibraryPath>
+    <IncludePath>D:\git\AirSim\AirLib\include;D:\git\AirSim\AirLib\deps\eigen3;D:\git\AirSim\AirLib\deps\rpclib\include;D:\git\AirSim\MavLinkCom\include;$(IncludePath)</IncludePath>
+    <LibraryPath>D:\git\AirSim\AirLib\lib\x64\Debug;D:\git\AirSim\MavLinkCom\lib\x64\Debug;D:\git\AirSim\AirLib\deps\rpclib\lib\x64\Debug;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>.\include;.\deps\eigen3;.\deps\MavLinkCom\include;$(IncludePath)</IncludePath>
-    <LibraryPath>.\deps\AirLib\lib\x64\Release;.\deps\MavLinkCom\lib\x64\Release;$(LibraryPath)</LibraryPath>
+    <IncludePath>D:\git\AirSim\AirLib\include;D:\git\AirSim\AirLib\deps\eigen3;D:\git\AirSim\AirLib\deps\rpclib\include;D:\git\AirSim\MavLinkCom\include;$(IncludePath)</IncludePath>
+    <LibraryPath>D:\git\AirSim\AirLib\lib\x64\Release;D:\git\AirSim\AirLib\deps\MavLinkCom\lib\x64\Release;D:\git\AirSim\AirLib\deps\rpclib\lib\x64\Release;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -139,6 +139,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp14</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -149,8 +150,10 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="multirotor.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="multirotor.h" />
     <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>
