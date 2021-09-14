@@ -32,13 +32,13 @@ void PrintInfo(msr::airlib::Kinematics::State &kine, int id, bool allInfo = true
         printf("%4d%16.2f%16.2f%16.2f%16.2f%16.2f%16.2f\n"
             , id
             , kine.pose.position.x(), kine.pose.position.y(), kine.pose.position.z()
-            , kine.twist.linear.x(), kine.twist.linear.y(), kine.twist.linear.z()
+            , kine.pose.orientation.x() * 180, kine.pose.orientation.y() * 180, kine.pose.orientation.z() * 180
         );
     }
 }
 void main(int argc, char *argv[])
 {
-    int num = 3;
+    int num = 1;
     if (argc > 1)
     {
         num = atoi(argv[1]);
