@@ -69,7 +69,7 @@ void main(int argc, char *argv[])
     for (int i = 0; i < num; i++)
     {
         char name[64]{ 0 };
-        _snprintf(name, sizeof(name),"Multirotor%02d", i);
+        _snprintf(name, sizeof(name),"MR-%d", i);
         Multirotor* sp = new Multirotor(name);
         sp->spawn();
         multirotors.push_back(sp);
@@ -80,6 +80,9 @@ void main(int argc, char *argv[])
     for (int i = 0; i < num; i++)
     {
         multirotors[i]->start();
+        //multirotors[i]->getApi()->enableApiControl(true);
+        //multirotors[i]->getApi()->armDisarm(true);
+        //multirotors[i]->getApi()->hover();
     }
 
     std::unique_ptr<PhysicsEngineBase> physics_engine(new FastPhysicsEngine());
