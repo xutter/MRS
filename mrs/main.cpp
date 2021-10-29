@@ -29,8 +29,9 @@ void PrintInfo(msr::airlib::Kinematics::State &kine, int id, bool allInfo = true
     }
     else
     {
-        printf("%4d%16.2f%16.2f%16.2f%16.2f%16.2f%16.2f\n"
+        printf("ID=%4d    地速(m/s)=%-5.1f    垂速(m/s)=%-5.1f    三轴位移(m)=(%-8.2f,%-8.2f,%-8.2f)    姿态角(°)=(%-5.2f,%-5.2f,%-5.2f)\n"
             , id
+            , sqrt(pow(kine.twist.linear.x(),2.0) + pow(kine.twist.linear.y(),2.0)), kine.twist.linear.z()
             , kine.pose.position.x(), kine.pose.position.y(), kine.pose.position.z()
             , kine.pose.orientation.x() * 180, kine.pose.orientation.y() * 180, kine.pose.orientation.z() * 180
         );
@@ -42,6 +43,11 @@ void main(int argc, char *argv[])
     if (argc > 1)
     {
         num = atoi(argv[1]);
+    }
+    int nThread = num;
+    if (argc > 2)
+    {
+        nThread = atoi(argv[2]);
     }
     __int64 so = socket(AF_INET,SOCK_DGRAM,IPPROTO_UDP);
 
@@ -58,6 +64,7 @@ void main(int argc, char *argv[])
 
     // 仿真计算周期 3ms
     auto clock = std::make_shared<SteppableClock>(3E-3f);
+    //auto clock = std::make_shared<SteppableClock>(0.05);
     ClockFactory::get(clock);
 
     // 创建默认的参数
@@ -97,10 +104,11 @@ void main(int argc, char *argv[])
     }
     msr::airlib::MultirotorRpcLibServer server(&api_provider, "0.0.0.0");
     //start server in async mode
-    server.start(false, 2);
+    server.start(false, nThread);
 
-    int i = 0;
+    int index = 0;
     while (true) {
+        index += 1;
         clock->sleep_for(0.1); 
         int i = 1;
         for (auto it : multirotors)
@@ -116,9 +124,9 @@ void main(int argc, char *argv[])
             };
 
             sendto(so,(const char *)&_data,sizeof(_data),0,(sockaddr *)&raddr,sizeof(raddr));
-            PrintInfo(kine,i,false);
+            if(index % 10 == 0)
+                PrintInfo(kine,i,false);
             i += 1;
         }
-
     }
 }
